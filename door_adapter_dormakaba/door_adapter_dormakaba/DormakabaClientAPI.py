@@ -24,7 +24,7 @@ class DormakabaAPI:
     def __init__(self,url,api_key,api_value,door_id):
         self.url = url
         self.header = {api_key:api_value}
-        self.data = {"id": door_id}
+        self.door_id = door_id
 
         count = 0
         self.connected = True
@@ -40,8 +40,9 @@ class DormakabaAPI:
 
     def check_connection(self):
         # Test connectivity
+        data = {"id": self.door_id}
         try:
-            res = requests.post(url=self.url+"/rmf/status", headers=self.header, json=self.data, timeout=1.0)
+            res = requests.post(url=self.url+"/rmf/status", headers=self.header, json=data, timeout=1.0)
             res.raise_for_status()
             return True
         except (socket.gaierror, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.HTTPError ,requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
@@ -49,11 +50,12 @@ class DormakabaAPI:
             return False
 
     def open_door(self):
+        data = {"id": self.door_id, "doorAction": "holdOpen"}
         try:
-            response = requests.post(url=self.url+"/rmf/remoteopen",headers=self.header, json=self.data, timeout=1.0)
+            response = requests.post(url=self.url+"/rmf/remoteopen",headers=self.header, json=data, timeout=1.0)
             if response:
-                result = response.json()["body"]
-                if (result.get("result") is not None):
+                result = response.json()["statusCode"]
+                if (result.get("result") == 200 ):
                     return True
                 else:
                     print("door could not perform open")
@@ -64,10 +66,29 @@ class DormakabaAPI:
         except (socket.gaierror, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.HTTPError ,requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
             print("Connection Error. "+str(e))
             return False
+    
+    def close_door(self):
+        data = {"id": self.door_id, "doorAction": "close"}
+        try:
+            response = requests.post(url=self.url+"/rmf/remoteopen",headers=self.header, json=data, timeout=1.0)
+            if response:
+                result = response.json()["statusCode"]
+                if (result.get("result") == 200 ):
+                    return True
+                else:
+                    print("door could not perform close")
+                    return False
+            else:
+                print("Invalid response received")
+                return False
+        except (socket.gaierror, urllib3.exceptions.NewConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.HTTPError ,requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
+            print("Connection Error. "+str(e))
+            return False
 
     def get_mode(self):
+        data = {"id": self.door_id}
         try:
-            response = requests.post(url=self.url+"/rmf/status", headers=self.header, json=self.data, timeout=1.0)
+            response = requests.post(url=self.url+"/rmf/status", headers=self.header, json=data, timeout=1.0)
             if response:
                 state = response.json().get("body").get("doorState")
                 if state is None:
@@ -76,7 +97,7 @@ class DormakabaAPI:
                     return DoorMode.MODE_CLOSED
                 elif state == "opening" or state == "closing" or state == "betweenOpenAndClosed":
                     return DoorMode.MODE_MOVING
-                elif state == "open":
+                elif state in ["open", "openOHZ"]:
                     return DoorMode.MODE_OPEN
                 elif state == "OFFLINE":
                     return DoorMode.MODE_OFFLINE

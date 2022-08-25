@@ -50,63 +50,44 @@ class DoorAdapter(Node):
 
         # default door state - closed mode
         self.door_mode = DoorMode.MODE_CLOSED
-        # open door flag
-        self.open_door = False
-        self.check_status = False
 
         self.door_states_pub = self.create_publisher(
             DoorState, 'door_states', 1)
 
         self.door_request_sub = self.create_subscription(
-            DoorRequest, 'adapter_door_requests', self.door_request_cb, 10)
+            DoorRequest, 'door_requests', self.door_request_cb, 10)
 
         self.periodic_timer = self.create_timer(
             1.0, self.time_cb)
 
-    def keep_door_open(self):
-        # dormakaba API doesn't have close door API
-        # Once the door command is posted to the Dormakaba API,
-        # the door will be opened and then close after 5 secs
-        while self.open_door:
-            success = self.api.open_door()
-            if success:
-                self.get_logger().info(f"Request to open door [{self.door_name}] is successful")
-            else:
-                self.get_logger().info(f"Request to open door [{self.door_name}] is unsuccessful")
-            time.sleep(3.0)
 
     def time_cb(self):
-        if self.check_status:
-            self.door_mode = self.api.get_mode()
-            # when door request is to close door and the door state is close
-            # will assume the door state is close until next door open request
-            if self.door_mode == DoorMode.MODE_CLOSED and not self.open_door:
-                self.check_status = False
+        self.door_mode = self.api.get_mode()
         state_msg = DoorState()
         state_msg.door_time = self.get_clock().now().to_msg()
-
         # publish states of the door
         state_msg.door_name = self.door_name
         state_msg.current_mode.value = self.door_mode
         self.door_states_pub.publish(state_msg)
 
     def door_request_cb(self, msg: DoorRequest):
-        # when door node receive open request, the door adapter will send open command to API
-        # If door node receive close request, the door adapter will stop sending open command to API
         # check DoorRequest msg whether the door name of the request is same as the current door. If not, ignore the request
         if msg.door_name == self.door_name:
             self.get_logger().info(f"Door mode [{msg.requested_mode.value}] requested by {msg.requester_id}")
             if msg.requested_mode.value == DoorMode.MODE_OPEN:
-                if not self.open_door:
-                    # open door implementation
-                    self.open_door = True
-                    self.check_status = True
-                    t = threading.Thread(target = self.keep_door_open)
-                    t.start()
+                # open door implementation
+                success = self.api.open_door()
+                if success:
+                    self.get_logger().info(f"Request to open door [{self.door_name}] is successful")
+                else:
+                    self.get_logger().info(f"Request to open door [{self.door_name}] is unsuccessful")
             elif msg.requested_mode.value == DoorMode.MODE_CLOSED:
                 # close door implementation
-                self.get_logger().info('Close Command to door received')
-                self.open_door = False
+                success = self.api.close_door()
+                if success:
+                    self.get_logger().info(f"Request to close door [{self.door_name}] is successful")
+                else:
+                    self.get_logger().info(f"Request to close door [{self.door_name}] is unsuccessful")
             else:
                 self.get_logger().error('Invalid door mode requested. Ignoring...')
 
