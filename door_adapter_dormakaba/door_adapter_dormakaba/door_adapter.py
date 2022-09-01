@@ -60,6 +60,8 @@ class DoorAdapter(Node):
         self.periodic_timer = self.create_timer(
             1.0, self.time_cb)
 
+        self.prev_request = None
+
 
     def time_cb(self):
         self.door_mode = self.api.get_mode()
@@ -74,11 +76,22 @@ class DoorAdapter(Node):
         # check DoorRequest msg whether the door name of the request is same as the current door. If not, ignore the request
         if msg.door_name == self.door_name:
             self.get_logger().info(f"Door mode [{msg.requested_mode.value}] requested by {msg.requester_id}")
+
+            # check if it is duplicated request, if yes then ignore
+            if self.prev_request:
+                if (msg.requested_mode.value == self.prev_request.requested_mode.value and msg.requester_id == self.prev_request.requester_id):
+                    time_elapsed = abs(msg.request_time.sec - self.prev_request.request_time.sec)
+                    print ("time_elapsed: " + str(time_elapsed))
+                    if time_elapsed < 10.0:
+                        self.get_logger().info(f"Duplicated request, skipped!")
+                        return
+
             if msg.requested_mode.value == DoorMode.MODE_OPEN:
                 # open door implementation
                 success = self.api.open_door()
                 if success:
                     self.get_logger().info(f"Request to open door [{self.door_name}] is successful")
+                    self.prev_request = msg
                 else:
                     self.get_logger().info(f"Request to open door [{self.door_name}] is unsuccessful")
             elif msg.requested_mode.value == DoorMode.MODE_CLOSED:
@@ -86,6 +99,7 @@ class DoorAdapter(Node):
                 success = self.api.close_door()
                 if success:
                     self.get_logger().info(f"Request to close door [{self.door_name}] is successful")
+                    self.prev_request = msg
                 else:
                     self.get_logger().info(f"Request to close door [{self.door_name}] is unsuccessful")
             else:
