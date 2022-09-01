@@ -26,8 +26,15 @@ class DormakabaAPI:
         self.header = {api_key:api_value}
         self.door_id = door_id
 
+        print ("\nDoor config: ")
+        print ("url: " + self.url)
+        print ("header: " + str(self.header))
+        print ("door_id: " + self.door_id)
+        print ("\n")
+
         count = 0
         self.connected = True
+        
         while not self.check_connection():
             if count >= 5:
                 print("Unable to connect to Dormakaba cloud API after several retries. Exiting...")
@@ -55,7 +62,7 @@ class DormakabaAPI:
             response = requests.post(url=self.url+"/rmf/remoteopen",headers=self.header, json=data, timeout=1.0)
             if response:
                 result = response.json()["statusCode"]
-                if (result.get("result") == 200 ):
+                if (result == 200 ):
                     return True
                 else:
                     print("door could not perform open")
@@ -73,7 +80,7 @@ class DormakabaAPI:
             response = requests.post(url=self.url+"/rmf/remoteopen",headers=self.header, json=data, timeout=1.0)
             if response:
                 result = response.json()["statusCode"]
-                if (result.get("result") == 200 ):
+                if (result == 200 ):
                     return True
                 else:
                     print("door could not perform close")
