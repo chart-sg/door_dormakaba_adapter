@@ -61,6 +61,7 @@ class DoorAdapter(Node):
             1.0, self.time_cb)
 
         self.prev_request = None
+        self.request_duplicated_duration = 10 # in seconds, to be considered as duplicated request
 
 
     def time_cb(self):
@@ -80,9 +81,21 @@ class DoorAdapter(Node):
             # check if it is duplicated request, if yes then ignore
             if self.prev_request:
                 if (msg.requested_mode.value == self.prev_request.requested_mode.value and msg.requester_id == self.prev_request.requester_id):
-                    time_elapsed = abs(msg.request_time.sec - self.prev_request.request_time.sec)
-                    print ("time_elapsed: " + str(time_elapsed))
-                    if time_elapsed < 10.0:
+                    req_req_time_elapsed = abs(msg.request_time.sec - self.prev_request.request_time.sec)
+                    print ("req-req_time_elapsed: " + str(req_req_time_elapsed))
+                    req_now_time_elapsed = abs(msg.request_time.sec - self.get_clock().now().to_msg().sec)
+                    print ("req-now_time_elapsed: " + str(req_now_time_elapsed))
+
+                    
+                    # req-req < self.request_duplicated_duration. then ignore 
+                    # req-req == 0 and req-now > self.request_duplicated_duration, then proceed
+                    if req_req_time_elapsed == 0.0:
+                        if req_now_time_elapsed < self.request_duplicated_duration:
+                            self.get_logger().info(f"Duplicated request, same request time, less than {str(self.request_duplicated_duration)}s, skipped!")
+                            return
+                        else:
+                            self.get_logger().info(f"Duplicated request, same request time, but more than {str(self.request_duplicated_duration)}s, will proceed!")
+                    elif req_req_time_elapsed < self.request_duplicated_duration:
                         self.get_logger().info(f"Duplicated request, skipped!")
                         return
 
