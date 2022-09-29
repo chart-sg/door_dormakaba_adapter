@@ -33,11 +33,15 @@ from rmf_door_msgs.msg import DoorRequest, DoorState, DoorMode
 
 class DoorAdapter(Node):
     def __init__(self,config_yaml):
-        super().__init__('dormakaba_door_adapter')
+
+        self.door_name = config_yaml['door']['name']
+        self.node_name = f"{self.door_name}_door_node"
+        super().__init__(self.node_name)
+
         self.get_logger().info('Greetings, starting dormakaba door adapter')
 
         # Get value from config file
-        self.door_name = config_yaml['door']['name']
+        
         url = config_yaml['door']['api_endpoint']
         api_key = config_yaml['door']['header_key']
         api_value = config_yaml['door']['header_value']
@@ -86,18 +90,15 @@ class DoorAdapter(Node):
                     req_now_time_elapsed = abs(msg.request_time.sec - self.get_clock().now().to_msg().sec)
                     print ("req-now_time_elapsed: " + str(req_now_time_elapsed))
 
-                    
-                    # req-req < self.request_duplicated_duration. then ignore 
-                    # req-req == 0 and req-now > self.request_duplicated_duration, then proceed
-                    if req_req_time_elapsed == 0.0:
-                        if req_now_time_elapsed < self.request_duplicated_duration:
-                            self.get_logger().info(f"Duplicated request, same request time, less than {str(self.request_duplicated_duration)}s, skipped!")
+                    if req_req_time_elapsed < self.request_duplicated_duration:
+                        if req_now_time_elapsed < 8:
+                            print("Duplicated request, req-now less than 10s, skipped!")
                             return
                         else:
-                            self.get_logger().info(f"Duplicated request, same request time, but more than {str(self.request_duplicated_duration)}s, will proceed!")
-                    elif req_req_time_elapsed < self.request_duplicated_duration:
-                        self.get_logger().info(f"Duplicated request, skipped!")
-                        return
+                            print("Duplicated request, but req-now more than 10s, will proceed!")
+
+
+
 
             if msg.requested_mode.value == DoorMode.MODE_OPEN:
                 # open door implementation

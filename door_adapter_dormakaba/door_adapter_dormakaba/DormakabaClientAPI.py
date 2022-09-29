@@ -57,9 +57,11 @@ class DormakabaAPI:
             return False
 
     def open_door(self):
-        data = {"id": self.door_id, "doorAction": "holdOpen"}
+        data = {"id": self.door_id, "doorAction": "quickOpen"}
+        print ("trigger door open")
         try:
-            response = requests.post(url=self.url+"/rmf/remoteopen",headers=self.header, json=data, timeout=1.0)
+            response = requests.post(url=self.url+"/rmf/remoteopen",headers=self.header, json=data)
+            print ("response: " + str(response))
             if response:
                 result = response.json()["statusCode"]
                 if (result == 200 ):
@@ -77,7 +79,7 @@ class DormakabaAPI:
     def close_door(self):
         data = {"id": self.door_id, "doorAction": "close"}
         try:
-            response = requests.post(url=self.url+"/rmf/remoteopen",headers=self.header, json=data, timeout=1.0)
+            response = requests.post(url=self.url+"/rmf/remoteopen",headers=self.header, json=data)
             if response:
                 result = response.json()["statusCode"]
                 if (result == 200 ):
@@ -95,7 +97,7 @@ class DormakabaAPI:
     def get_mode(self):
         data = {"id": self.door_id}
         try:
-            response = requests.post(url=self.url+"/rmf/status", headers=self.header, json=data, timeout=1.0)
+            response = requests.post(url=self.url+"/rmf/status", headers=self.header, json=data)
             if response:
                 state = response.json().get("body").get("doorState")
                 if state is None:
